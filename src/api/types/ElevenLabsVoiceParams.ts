@@ -3,6 +3,7 @@
  */
 
 export interface ElevenLabsVoiceParams {
+    type: "voice_eleven_labs";
     voiceId: string;
     stability?: number;
     similarityBoost?: number;

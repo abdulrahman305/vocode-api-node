@@ -1,5 +1,5 @@
-export { GetAccountConnectionRequest } from "./GetAccountConnectionRequest";
-export { ListAccountConnectionsRequest } from "./ListAccountConnectionsRequest";
-export { UpdateAccountConnectionRequest } from "./UpdateAccountConnectionRequest";
-export { AddToSteeringPoolRequest } from "./AddToSteeringPoolRequest";
-export { RemoveFromSteeringPoolRequest } from "./RemoveFromSteeringPoolRequest";
+export { type GetAccountConnectionRequest } from "./GetAccountConnectionRequest";
+export { type ListAccountConnectionsRequest } from "./ListAccountConnectionsRequest";
+export { type UpdateAccountConnectionRequest } from "./UpdateAccountConnectionRequest";
+export { type AddToSteeringPoolRequest } from "./AddToSteeringPoolRequest";
+export { type RemoveFromSteeringPoolRequest } from "./RemoveFromSteeringPoolRequest";

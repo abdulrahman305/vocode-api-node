@@ -1,3 +1,3 @@
-export { GetPromptRequest } from "./GetPromptRequest";
-export { ListPromptsRequest } from "./ListPromptsRequest";
-export { UpdatePromptRequest } from "./UpdatePromptRequest";
+export { type GetPromptRequest } from "./GetPromptRequest";
+export { type ListPromptsRequest } from "./ListPromptsRequest";
+export { type UpdatePromptRequest } from "./UpdatePromptRequest";

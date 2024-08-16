@@ -4,22 +4,37 @@
 
 import * as environments from "../../../../environments";
 import * as core from "../../../../core";
-import * as Vocode from "../../..";
+import * as Vocode from "../../../index";
 import urlJoin from "url-join";
-import * as serializers from "../../../../serialization";
-import * as errors from "../../../../errors";
+import * as serializers from "../../../../serialization/index";
+import * as errors from "../../../../errors/index";
 
 export declare namespace Usage {
     interface Options {
         environment?: core.Supplier<environments.VocodeEnvironment | string>;
-        token: core.Supplier<core.BearerToken>;
+        token?: core.Supplier<core.BearerToken | undefined>;
+    }
+
+    interface RequestOptions {
+        /** The maximum time to wait for a response in seconds. */
+        timeoutInSeconds?: number;
+        /** The number of times to retry the request. Defaults to 2. */
+        maxRetries?: number;
+        /** A hook to abort the request. */
+        abortSignal?: AbortSignal;
     }
 }
 
 export class Usage {
-    constructor(protected readonly _options: Usage.Options) {}
+    constructor(protected readonly _options: Usage.Options = {}) {}
 
-    public async getUsage(): Promise<Vocode.Usage> {
+    /**
+     * @param {Usage.RequestOptions} requestOptions - Request-specific configuration.
+     *
+     * @example
+     *     await client.usage.getUsage()
+     */
+    public async getUsage(requestOptions?: Usage.RequestOptions): Promise<Vocode.Usage> {
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -30,13 +45,19 @@ export class Usage {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.Usage.parseOrThrow(_response.body, {
+            return serializers.Usage.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -66,7 +87,12 @@ export class Usage {
         }
     }
 
-    protected async _getAuthorizationHeader() {
-        return `Bearer ${await core.Supplier.get(this._options.token)}`;
+    protected async _getAuthorizationHeader(): Promise<string | undefined> {
+        const bearer = await core.Supplier.get(this._options.token);
+        if (bearer != null) {
+            return `Bearer ${bearer}`;
+        }
+
+        return undefined;
     }
 }

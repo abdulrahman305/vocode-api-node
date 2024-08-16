@@ -1,6 +1,10 @@
-import { default as URLSearchParams } from "@ungap/url-search-params";
-import axios, { AxiosAdapter, AxiosError, AxiosProgressEvent } from "axios";
 import { APIResponse } from "./APIResponse";
+import { createRequestUrl } from "./createRequestUrl";
+import { getFetchFn } from "./getFetchFn";
+import { getRequestBody } from "./getRequestBody";
+import { getResponseBody } from "./getResponseBody";
+import { makeRequest } from "./makeRequest";
+import { requestWithRetries } from "./requestWithRetries";
 
 export type FetchFunction = <R = unknown>(args: Fetcher.Args) => Promise<APIResponse<R, Fetcher.Error>>;
 
@@ -10,13 +14,15 @@ export declare namespace Fetcher {
         method: string;
         contentType?: string;
         headers?: Record<string, string | undefined>;
-        queryParameters?: URLSearchParams;
+        queryParameters?: Record<string, string | string[] | object | object[]>;
         body?: unknown;
         timeoutMs?: number;
+        maxRetries?: number;
         withCredentials?: boolean;
-        responseType?: "json" | "blob";
-        adapter?: AxiosAdapter;
-        onUploadProgress?: (event: AxiosProgressEvent) => void;
+        abortSignal?: AbortSignal;
+        requestType?: "json" | "file" | "bytes";
+        responseType?: "json" | "blob" | "sse" | "streaming" | "text";
+        duplex?: "half";
     }
 
     export type Error = FailedStatusCodeError | NonJsonError | TimeoutError | UnknownError;
@@ -43,7 +49,7 @@ export declare namespace Fetcher {
     }
 }
 
-async function fetcherImpl<R = unknown>(args: Fetcher.Args): Promise<APIResponse<R, Fetcher.Error>> {
+export async function fetcherImpl<R = unknown>(args: Fetcher.Args): Promise<APIResponse<R, Fetcher.Error>> {
     const headers: Record<string, string> = {};
     if (args.body !== undefined && args.contentType != null) {
         headers["Content-Type"] = args.contentType;
@@ -57,49 +63,36 @@ async function fetcherImpl<R = unknown>(args: Fetcher.Args): Promise<APIResponse
         }
     }
 
-    try {
-        const response = await axios({
-            url: args.url,
-            params: args.queryParameters,
-            method: args.method,
-            headers,
-            data: args.body,
-            validateStatus: () => true,
-            transformResponse: (response) => response,
-            timeout: args.timeoutMs,
-            transitional: {
-                clarifyTimeoutError: true,
-            },
-            withCredentials: args.withCredentials,
-            adapter: args.adapter,
-            onUploadProgress: args.onUploadProgress,
-            maxBodyLength: Infinity,
-            maxContentLength: Infinity,
-            responseType: args.responseType ?? "json",
-        });
+    const url = createRequestUrl(args.url, args.queryParameters);
+    let requestBody: BodyInit | undefined = await getRequestBody({
+        body: args.body,
+        type: args.requestType === "json" ? "json" : "other",
+    });
+    const fetchFn = await getFetchFn();
 
-        let body: unknown;
-        if (args.responseType === "blob") {
-            body = response.data;
-        } else if (response.data != null && response.data.length > 0) {
-            try {
-                body = JSON.parse(response.data) ?? undefined;
-            } catch {
-                return {
-                    ok: false,
-                    error: {
-                        reason: "non-json",
-                        statusCode: response.status,
-                        rawBody: response.data,
-                    },
-                };
-            }
-        }
+    try {
+        const response = await requestWithRetries(
+            async () =>
+                makeRequest(
+                    fetchFn,
+                    url,
+                    args.method,
+                    headers,
+                    requestBody,
+                    args.timeoutMs,
+                    args.abortSignal,
+                    args.withCredentials,
+                    args.duplex
+                ),
+            args.maxRetries
+        );
+        let responseBody = await getResponseBody(response, args.responseType);
 
         if (response.status >= 200 && response.status < 400) {
             return {
                 ok: true,
-                body: body as R,
+                body: responseBody as R,
+                headers: response.headers,
             };
         } else {
             return {
@@ -107,16 +100,32 @@ async function fetcherImpl<R = unknown>(args: Fetcher.Args): Promise<APIResponse
                 error: {
                     reason: "status-code",
                     statusCode: response.status,
-                    body,
+                    body: responseBody,
                 },
             };
         }
     } catch (error) {
-        if ((error as AxiosError).code === "ETIMEDOUT") {
+        if (args.abortSignal != null && args.abortSignal.aborted) {
+            return {
+                ok: false,
+                error: {
+                    reason: "unknown",
+                    errorMessage: "The user aborted a request",
+                },
+            };
+        } else if (error instanceof Error && error.name === "AbortError") {
             return {
                 ok: false,
                 error: {
                     reason: "timeout",
+                },
+            };
+        } else if (error instanceof Error) {
+            return {
+                ok: false,
+                error: {
+                    reason: "unknown",
+                    errorMessage: error.message,
                 },
             };
         }
@@ -125,7 +134,7 @@ async function fetcherImpl<R = unknown>(args: Fetcher.Args): Promise<APIResponse
             ok: false,
             error: {
                 reason: "unknown",
-                errorMessage: (error as AxiosError).message,
+                errorMessage: JSON.stringify(error),
             },
         };
     }

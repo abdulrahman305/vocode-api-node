@@ -4,6 +4,8 @@
 
 import * as environments from "./environments";
 import * as core from "./core";
+import urlJoin from "url-join";
+import * as errors from "./errors/index";
 import { Numbers } from "./api/resources/numbers/client/Client";
 import { Calls } from "./api/resources/calls/client/Client";
 import { Usage } from "./api/resources/usage/client/Client";
@@ -18,12 +20,77 @@ import { AccountConnections } from "./api/resources/accountConnections/client/Cl
 export declare namespace VocodeClient {
     interface Options {
         environment?: core.Supplier<environments.VocodeEnvironment | string>;
-        token: core.Supplier<core.BearerToken>;
+        token?: core.Supplier<core.BearerToken | undefined>;
+    }
+
+    interface RequestOptions {
+        /** The maximum time to wait for a response in seconds. */
+        timeoutInSeconds?: number;
+        /** The number of times to retry the request. Defaults to 2. */
+        maxRetries?: number;
+        /** A hook to abort the request. */
+        abortSignal?: AbortSignal;
     }
 }
 
 export class VocodeClient {
-    constructor(protected readonly _options: VocodeClient.Options) {}
+    constructor(protected readonly _options: VocodeClient.Options = {}) {}
+
+    /**
+     * Endpoint that serves Prometheus metrics.
+     *
+     * @param {VocodeClient.RequestOptions} requestOptions - Request-specific configuration.
+     *
+     * @example
+     *     await client.metricsMetricsGet()
+     */
+    public async metricsMetricsGet(requestOptions?: VocodeClient.RequestOptions): Promise<unknown> {
+        const _response = await core.fetcher({
+            url: urlJoin(
+                (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
+                "metrics"
+            ),
+            method: "GET",
+            headers: {
+                Authorization: await this._getAuthorizationHeader(),
+                "X-Fern-Language": "JavaScript",
+                "X-Fern-SDK-Name": "@vocode/vocode-api",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
+            },
+            contentType: "application/json",
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
+        });
+        if (_response.ok) {
+            return _response.body;
+        }
+
+        if (_response.error.reason === "status-code") {
+            throw new errors.VocodeError({
+                statusCode: _response.error.statusCode,
+                body: _response.error.body,
+            });
+        }
+
+        switch (_response.error.reason) {
+            case "non-json":
+                throw new errors.VocodeError({
+                    statusCode: _response.error.statusCode,
+                    body: _response.error.rawBody,
+                });
+            case "timeout":
+                throw new errors.VocodeTimeoutError();
+            case "unknown":
+                throw new errors.VocodeError({
+                    message: _response.error.errorMessage,
+                });
+        }
+    }
 
     protected _numbers: Numbers | undefined;
 
@@ -83,5 +150,14 @@ export class VocodeClient {
 
     public get accountConnections(): AccountConnections {
         return (this._accountConnections ??= new AccountConnections(this._options));
+    }
+
+    protected async _getAuthorizationHeader(): Promise<string | undefined> {
+        const bearer = await core.Supplier.get(this._options.token);
+        if (bearer != null) {
+            return `Bearer ${bearer}`;
+        }
+
+        return undefined;
     }
 }

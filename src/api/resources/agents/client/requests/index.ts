@@ -1,4 +1,3 @@
-export { GetAgentRequest } from "./GetAgentRequest";
-export { ListAgentsRequest } from "./ListAgentsRequest";
-export { AgentParams } from "./AgentParams";
-export { UpdateAgentRequest } from "./UpdateAgentRequest";
+export { type GetAgentRequest } from "./GetAgentRequest";
+export { type ListAgentsRequest } from "./ListAgentsRequest";
+export { type UpdateAgentRequest } from "./UpdateAgentRequest";

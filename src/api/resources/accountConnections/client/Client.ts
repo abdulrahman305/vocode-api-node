@@ -4,31 +4,48 @@
 
 import * as environments from "../../../../environments";
 import * as core from "../../../../core";
-import * as Vocode from "../../..";
-import { default as URLSearchParams } from "@ungap/url-search-params";
+import * as Vocode from "../../../index";
 import urlJoin from "url-join";
-import * as serializers from "../../../../serialization";
-import * as errors from "../../../../errors";
+import * as serializers from "../../../../serialization/index";
+import * as errors from "../../../../errors/index";
 
 export declare namespace AccountConnections {
     interface Options {
         environment?: core.Supplier<environments.VocodeEnvironment | string>;
-        token: core.Supplier<core.BearerToken>;
+        token?: core.Supplier<core.BearerToken | undefined>;
+    }
+
+    interface RequestOptions {
+        /** The maximum time to wait for a response in seconds. */
+        timeoutInSeconds?: number;
+        /** The number of times to retry the request. Defaults to 2. */
+        maxRetries?: number;
+        /** A hook to abort the request. */
+        abortSignal?: AbortSignal;
     }
 }
 
 export class AccountConnections {
-    constructor(protected readonly _options: AccountConnections.Options) {}
+    constructor(protected readonly _options: AccountConnections.Options = {}) {}
 
     /**
+     * @param {Vocode.GetAccountConnectionRequest} request
+     * @param {AccountConnections.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.accountConnections.getAccountConnection({
+     *         id: "id"
+     *     })
      */
     public async getAccountConnection(
-        request: Vocode.GetAccountConnectionRequest
+        request: Vocode.GetAccountConnectionRequest,
+        requestOptions?: AccountConnections.RequestOptions
     ): Promise<Vocode.AccountConnectionResponseModel> {
         const { id } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -39,14 +56,20 @@ export class AccountConnections {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.AccountConnectionResponseModel.parseOrThrow(_response.body, {
+            return serializers.AccountConnectionResponseModel.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -58,7 +81,7 @@ export class AccountConnections {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -89,27 +112,34 @@ export class AccountConnections {
     }
 
     /**
+     * @param {Vocode.ListAccountConnectionsRequest} request
+     * @param {AccountConnections.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.accountConnections.listAccountConnections()
      */
     public async listAccountConnections(
-        request: Vocode.ListAccountConnectionsRequest = {}
+        request: Vocode.ListAccountConnectionsRequest = {},
+        requestOptions?: AccountConnections.RequestOptions
     ): Promise<Vocode.AccountConnectionPage> {
         const { page, size, sortColumn, sortDesc } = request;
-        const _queryParams = new URLSearchParams();
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
         if (page != null) {
-            _queryParams.append("page", page.toString());
+            _queryParams["page"] = page.toString();
         }
 
         if (size != null) {
-            _queryParams.append("size", size.toString());
+            _queryParams["size"] = size.toString();
         }
 
         if (sortColumn != null) {
-            _queryParams.append("sort_column", sortColumn);
+            _queryParams["sort_column"] = sortColumn;
         }
 
         if (sortDesc != null) {
-            _queryParams.append("sort_desc", sortDesc.toString());
+            _queryParams["sort_desc"] = sortDesc.toString();
         }
 
         const _response = await core.fetcher({
@@ -122,14 +152,20 @@ export class AccountConnections {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.AccountConnectionPage.parseOrThrow(_response.body, {
+            return serializers.AccountConnectionPage.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -141,7 +177,7 @@ export class AccountConnections {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -172,10 +208,22 @@ export class AccountConnections {
     }
 
     /**
+     * @param {Vocode.AccountConnectionParamsRequest} request
+     * @param {AccountConnections.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.accountConnections.createAccountConnection({
+     *         credentials: {
+     *             openaiApiKey: "openai_api_key"
+     *         },
+     *         type: "account_connection_openai"
+     *     })
      */
     public async createAccountConnection(
-        request: Vocode.AccountConnectionParamsRequest
+        request: Vocode.AccountConnectionParamsRequest,
+        requestOptions?: AccountConnections.RequestOptions
     ): Promise<Vocode.AccountConnectionResponseModel> {
         const _response = await core.fetcher({
             url: urlJoin(
@@ -187,16 +235,20 @@ export class AccountConnections {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
-            body: await serializers.AccountConnectionParamsRequest.jsonOrThrow(request, {
-                unrecognizedObjectKeys: "strip",
-            }),
-            timeoutMs: 60000,
+            requestType: "json",
+            body: serializers.AccountConnectionParamsRequest.jsonOrThrow(request, { unrecognizedObjectKeys: "strip" }),
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.AccountConnectionResponseModel.parseOrThrow(_response.body, {
+            return serializers.AccountConnectionResponseModel.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -208,7 +260,7 @@ export class AccountConnections {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -239,14 +291,26 @@ export class AccountConnections {
     }
 
     /**
+     * @param {Vocode.UpdateAccountConnectionRequest} request
+     * @param {AccountConnections.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.accountConnections.updateAccountConnection({
+     *         id: "id",
+     *         body: {
+     *             type: "account_connection_openai"
+     *         }
+     *     })
      */
     public async updateAccountConnection(
-        request: Vocode.UpdateAccountConnectionRequest
+        request: Vocode.UpdateAccountConnectionRequest,
+        requestOptions?: AccountConnections.RequestOptions
     ): Promise<Vocode.AccountConnectionResponseModel> {
         const { id, body: _body } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -257,17 +321,23 @@ export class AccountConnections {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            body: await serializers.AccountConnectionUpdateParamsRequest.jsonOrThrow(_body, {
+            requestType: "json",
+            body: serializers.AccountConnectionUpdateParamsRequest.jsonOrThrow(_body, {
                 unrecognizedObjectKeys: "strip",
             }),
-            timeoutMs: 60000,
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.AccountConnectionResponseModel.parseOrThrow(_response.body, {
+            return serializers.AccountConnectionResponseModel.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -279,7 +349,7 @@ export class AccountConnections {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -310,12 +380,24 @@ export class AccountConnections {
     }
 
     /**
+     * @param {Vocode.AddToSteeringPoolRequest} request
+     * @param {AccountConnections.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.accountConnections.addToSteeringPool({
+     *         id: "id",
+     *         body: undefined
+     *     })
      */
-    public async addToSteeringPool(request: Vocode.AddToSteeringPoolRequest): Promise<unknown> {
-        const { id, ..._body } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+    public async addToSteeringPool(
+        request: Vocode.AddToSteeringPoolRequest,
+        requestOptions?: AccountConnections.RequestOptions
+    ): Promise<unknown> {
+        const { id, body: _body } = request;
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -326,12 +408,23 @@ export class AccountConnections {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            body: await serializers.AddToSteeringPoolRequest.jsonOrThrow(_body, { unrecognizedObjectKeys: "strip" }),
-            timeoutMs: 60000,
+            requestType: "json",
+            body:
+                _body != null
+                    ? serializers.accountConnections.addToSteeringPool.Request.jsonOrThrow(_body, {
+                          unrecognizedObjectKeys: "strip",
+                      })
+                    : undefined,
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
             return _response.body;
@@ -341,7 +434,7 @@ export class AccountConnections {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -372,12 +465,24 @@ export class AccountConnections {
     }
 
     /**
+     * @param {Vocode.RemoveFromSteeringPoolRequest} request
+     * @param {AccountConnections.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.accountConnections.removeFromSteeringPool({
+     *         id: "id",
+     *         phoneNumber: "phone_number"
+     *     })
      */
-    public async removeFromSteeringPool(request: Vocode.RemoveFromSteeringPoolRequest): Promise<unknown> {
+    public async removeFromSteeringPool(
+        request: Vocode.RemoveFromSteeringPoolRequest,
+        requestOptions?: AccountConnections.RequestOptions
+    ): Promise<unknown> {
         const { id, ..._body } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -388,14 +493,18 @@ export class AccountConnections {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            body: await serializers.RemoveFromSteeringPoolRequest.jsonOrThrow(_body, {
-                unrecognizedObjectKeys: "strip",
-            }),
-            timeoutMs: 60000,
+            requestType: "json",
+            body: serializers.RemoveFromSteeringPoolRequest.jsonOrThrow(_body, { unrecognizedObjectKeys: "strip" }),
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
             return _response.body;
@@ -405,7 +514,7 @@ export class AccountConnections {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -435,7 +544,12 @@ export class AccountConnections {
         }
     }
 
-    protected async _getAuthorizationHeader() {
-        return `Bearer ${await core.Supplier.get(this._options.token)}`;
+    protected async _getAuthorizationHeader(): Promise<string | undefined> {
+        const bearer = await core.Supplier.get(this._options.token);
+        if (bearer != null) {
+            return `Bearer ${bearer}`;
+        }
+
+        return undefined;
     }
 }

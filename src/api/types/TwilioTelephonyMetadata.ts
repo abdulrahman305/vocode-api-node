@@ -3,6 +3,7 @@
  */
 
 export interface TwilioTelephonyMetadata {
+    type: "telephony_metadata_twilio";
     callSid?: string;
     callStatus?: string;
     transferCallSid?: string;

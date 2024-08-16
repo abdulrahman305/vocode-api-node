@@ -1,3 +1,3 @@
-export { GetActionRequest } from "./GetActionRequest";
-export { ListActionsRequest } from "./ListActionsRequest";
-export { UpdateActionRequest } from "./UpdateActionRequest";
+export { type GetActionRequest } from "./GetActionRequest";
+export { type ListActionsRequest } from "./ListActionsRequest";
+export { type UpdateActionRequest } from "./UpdateActionRequest";

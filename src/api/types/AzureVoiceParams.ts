@@ -3,6 +3,7 @@
  */
 
 export interface AzureVoiceParams {
+    type: "voice_azure";
     voiceName: string;
     pitch?: number;
     rate?: number;

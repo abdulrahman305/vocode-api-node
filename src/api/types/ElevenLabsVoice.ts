@@ -5,6 +5,7 @@
 export interface ElevenLabsVoice {
     id: string;
     userId: string;
+    type: "voice_eleven_labs";
     voiceId: string;
     stability?: number;
     similarityBoost?: number;

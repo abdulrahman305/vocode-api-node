@@ -4,29 +4,48 @@
 
 import * as environments from "../../../../environments";
 import * as core from "../../../../core";
-import * as Vocode from "../../..";
-import { default as URLSearchParams } from "@ungap/url-search-params";
+import * as Vocode from "../../../index";
 import urlJoin from "url-join";
-import * as serializers from "../../../../serialization";
-import * as errors from "../../../../errors";
+import * as serializers from "../../../../serialization/index";
+import * as errors from "../../../../errors/index";
 
 export declare namespace VectorDatabases {
     interface Options {
         environment?: core.Supplier<environments.VocodeEnvironment | string>;
-        token: core.Supplier<core.BearerToken>;
+        token?: core.Supplier<core.BearerToken | undefined>;
+    }
+
+    interface RequestOptions {
+        /** The maximum time to wait for a response in seconds. */
+        timeoutInSeconds?: number;
+        /** The number of times to retry the request. Defaults to 2. */
+        maxRetries?: number;
+        /** A hook to abort the request. */
+        abortSignal?: AbortSignal;
     }
 }
 
 export class VectorDatabases {
-    constructor(protected readonly _options: VectorDatabases.Options) {}
+    constructor(protected readonly _options: VectorDatabases.Options = {}) {}
 
     /**
+     * @param {Vocode.GetVectorDatabaseRequest} request
+     * @param {VectorDatabases.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.vectorDatabases.getVectorDatabase({
+     *         id: "id"
+     *     })
      */
-    public async getVectorDatabase(request: Vocode.GetVectorDatabaseRequest): Promise<Vocode.PineconeVectorDatabase> {
+    public async getVectorDatabase(
+        request: Vocode.GetVectorDatabaseRequest,
+        requestOptions?: VectorDatabases.RequestOptions
+    ): Promise<Vocode.PineconeVectorDatabase> {
         const { id } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -37,14 +56,20 @@ export class VectorDatabases {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.PineconeVectorDatabase.parseOrThrow(_response.body, {
+            return serializers.PineconeVectorDatabase.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -56,7 +81,7 @@ export class VectorDatabases {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -87,27 +112,34 @@ export class VectorDatabases {
     }
 
     /**
+     * @param {Vocode.ListVectorDatabasesRequest} request
+     * @param {VectorDatabases.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.vectorDatabases.listVectorDatabases()
      */
     public async listVectorDatabases(
-        request: Vocode.ListVectorDatabasesRequest = {}
+        request: Vocode.ListVectorDatabasesRequest = {},
+        requestOptions?: VectorDatabases.RequestOptions
     ): Promise<Vocode.VectorDatabasePage> {
         const { page, size, sortColumn, sortDesc } = request;
-        const _queryParams = new URLSearchParams();
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
         if (page != null) {
-            _queryParams.append("page", page.toString());
+            _queryParams["page"] = page.toString();
         }
 
         if (size != null) {
-            _queryParams.append("size", size.toString());
+            _queryParams["size"] = size.toString();
         }
 
         if (sortColumn != null) {
-            _queryParams.append("sort_column", sortColumn);
+            _queryParams["sort_column"] = sortColumn;
         }
 
         if (sortDesc != null) {
-            _queryParams.append("sort_desc", sortDesc.toString());
+            _queryParams["sort_desc"] = sortDesc.toString();
         }
 
         const _response = await core.fetcher({
@@ -120,14 +152,20 @@ export class VectorDatabases {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.VectorDatabasePage.parseOrThrow(_response.body, {
+            return serializers.VectorDatabasePage.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -139,7 +177,7 @@ export class VectorDatabases {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -170,10 +208,22 @@ export class VectorDatabases {
     }
 
     /**
+     * @param {Vocode.PineconeVectorDatabaseParams} request
+     * @param {VectorDatabases.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.vectorDatabases.createVectorDatabase({
+     *         type: "vector_database_pinecone",
+     *         index: "index",
+     *         apiKey: "api_key",
+     *         apiEnvironment: "api_environment"
+     *     })
      */
     public async createVectorDatabase(
-        request: Vocode.PineconeVectorDatabaseParams
+        request: Vocode.PineconeVectorDatabaseParams,
+        requestOptions?: VectorDatabases.RequestOptions
     ): Promise<Vocode.PineconeVectorDatabase> {
         const _response = await core.fetcher({
             url: urlJoin(
@@ -185,16 +235,20 @@ export class VectorDatabases {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
-            body: await serializers.PineconeVectorDatabaseParams.jsonOrThrow(request, {
-                unrecognizedObjectKeys: "strip",
-            }),
-            timeoutMs: 60000,
+            requestType: "json",
+            body: serializers.PineconeVectorDatabaseParams.jsonOrThrow(request, { unrecognizedObjectKeys: "strip" }),
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.PineconeVectorDatabase.parseOrThrow(_response.body, {
+            return serializers.PineconeVectorDatabase.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -206,7 +260,7 @@ export class VectorDatabases {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -237,14 +291,26 @@ export class VectorDatabases {
     }
 
     /**
+     * @param {Vocode.UpdateVectorDatabaseRequest} request
+     * @param {VectorDatabases.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.vectorDatabases.updateVectorDatabase({
+     *         id: "id",
+     *         body: {
+     *             type: "vector_database_pinecone"
+     *         }
+     *     })
      */
     public async updateVectorDatabase(
-        request: Vocode.UpdateVectorDatabaseRequest
+        request: Vocode.UpdateVectorDatabaseRequest,
+        requestOptions?: VectorDatabases.RequestOptions
     ): Promise<Vocode.PineconeVectorDatabase> {
         const { id, body: _body } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -255,17 +321,23 @@ export class VectorDatabases {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            body: await serializers.PineconeVectorDatabaseUpdateParams.jsonOrThrow(_body, {
+            requestType: "json",
+            body: serializers.PineconeVectorDatabaseUpdateParams.jsonOrThrow(_body, {
                 unrecognizedObjectKeys: "strip",
             }),
-            timeoutMs: 60000,
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.PineconeVectorDatabase.parseOrThrow(_response.body, {
+            return serializers.PineconeVectorDatabase.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -277,7 +349,7 @@ export class VectorDatabases {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -307,7 +379,12 @@ export class VectorDatabases {
         }
     }
 
-    protected async _getAuthorizationHeader() {
-        return `Bearer ${await core.Supplier.get(this._options.token)}`;
+    protected async _getAuthorizationHeader(): Promise<string | undefined> {
+        const bearer = await core.Supplier.get(this._options.token);
+        if (bearer != null) {
+            return `Bearer ${bearer}`;
+        }
+
+        return undefined;
     }
 }

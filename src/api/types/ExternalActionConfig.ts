@@ -10,4 +10,5 @@ export interface ExternalActionConfig {
     inputSchema: Record<string, unknown>;
     speakOnSend: boolean;
     speakOnReceive: boolean;
+    signatureSecret?: string;
 }

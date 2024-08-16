@@ -4,29 +4,48 @@
 
 import * as environments from "../../../../environments";
 import * as core from "../../../../core";
-import * as Vocode from "../../..";
-import { default as URLSearchParams } from "@ungap/url-search-params";
+import * as Vocode from "../../../index";
 import urlJoin from "url-join";
-import * as serializers from "../../../../serialization";
-import * as errors from "../../../../errors";
+import * as serializers from "../../../../serialization/index";
+import * as errors from "../../../../errors/index";
 
 export declare namespace Webhooks {
     interface Options {
         environment?: core.Supplier<environments.VocodeEnvironment | string>;
-        token: core.Supplier<core.BearerToken>;
+        token?: core.Supplier<core.BearerToken | undefined>;
+    }
+
+    interface RequestOptions {
+        /** The maximum time to wait for a response in seconds. */
+        timeoutInSeconds?: number;
+        /** The number of times to retry the request. Defaults to 2. */
+        maxRetries?: number;
+        /** A hook to abort the request. */
+        abortSignal?: AbortSignal;
     }
 }
 
 export class Webhooks {
-    constructor(protected readonly _options: Webhooks.Options) {}
+    constructor(protected readonly _options: Webhooks.Options = {}) {}
 
     /**
+     * @param {Vocode.GetWebhookRequest} request
+     * @param {Webhooks.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.webhooks.getWebhook({
+     *         id: "id"
+     *     })
      */
-    public async getWebhook(request: Vocode.GetWebhookRequest): Promise<Vocode.Webhook> {
+    public async getWebhook(
+        request: Vocode.GetWebhookRequest,
+        requestOptions?: Webhooks.RequestOptions
+    ): Promise<Vocode.Webhook> {
         const { id } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -37,14 +56,20 @@ export class Webhooks {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.Webhook.parseOrThrow(_response.body, {
+            return serializers.Webhook.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -56,7 +81,7 @@ export class Webhooks {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -87,25 +112,34 @@ export class Webhooks {
     }
 
     /**
+     * @param {Vocode.ListWebhooksRequest} request
+     * @param {Webhooks.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.webhooks.listWebhooks()
      */
-    public async listWebhooks(request: Vocode.ListWebhooksRequest = {}): Promise<Vocode.WebhookPage> {
+    public async listWebhooks(
+        request: Vocode.ListWebhooksRequest = {},
+        requestOptions?: Webhooks.RequestOptions
+    ): Promise<Vocode.WebhookPage> {
         const { page, size, sortColumn, sortDesc } = request;
-        const _queryParams = new URLSearchParams();
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
         if (page != null) {
-            _queryParams.append("page", page.toString());
+            _queryParams["page"] = page.toString();
         }
 
         if (size != null) {
-            _queryParams.append("size", size.toString());
+            _queryParams["size"] = size.toString();
         }
 
         if (sortColumn != null) {
-            _queryParams.append("sort_column", sortColumn);
+            _queryParams["sort_column"] = sortColumn;
         }
 
         if (sortDesc != null) {
-            _queryParams.append("sort_desc", sortDesc.toString());
+            _queryParams["sort_desc"] = sortDesc.toString();
         }
 
         const _response = await core.fetcher({
@@ -118,14 +152,20 @@ export class Webhooks {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            timeoutMs: 60000,
+            requestType: "json",
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.WebhookPage.parseOrThrow(_response.body, {
+            return serializers.WebhookPage.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -137,7 +177,7 @@ export class Webhooks {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -168,9 +208,21 @@ export class Webhooks {
     }
 
     /**
+     * @param {Vocode.WebhookParams} request
+     * @param {Webhooks.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.webhooks.createWebhook({
+     *         subscriptions: [Vocode.EventType.EventMessage],
+     *         url: "url"
+     *     })
      */
-    public async createWebhook(request: Vocode.WebhookParams): Promise<Vocode.Webhook> {
+    public async createWebhook(
+        request: Vocode.WebhookParams,
+        requestOptions?: Webhooks.RequestOptions
+    ): Promise<Vocode.Webhook> {
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -181,14 +233,20 @@ export class Webhooks {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
-            body: await serializers.WebhookParams.jsonOrThrow(request, { unrecognizedObjectKeys: "strip" }),
-            timeoutMs: 60000,
+            requestType: "json",
+            body: serializers.WebhookParams.jsonOrThrow(request, { unrecognizedObjectKeys: "strip" }),
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.Webhook.parseOrThrow(_response.body, {
+            return serializers.Webhook.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -200,7 +258,7 @@ export class Webhooks {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -231,12 +289,24 @@ export class Webhooks {
     }
 
     /**
+     * @param {Vocode.UpdateWebhookRequest} request
+     * @param {Webhooks.RequestOptions} requestOptions - Request-specific configuration.
+     *
      * @throws {@link Vocode.UnprocessableEntityError}
+     *
+     * @example
+     *     await client.webhooks.updateWebhook({
+     *         id: "id",
+     *         body: {}
+     *     })
      */
-    public async updateWebhook(request: Vocode.UpdateWebhookRequest): Promise<Vocode.Webhook> {
+    public async updateWebhook(
+        request: Vocode.UpdateWebhookRequest,
+        requestOptions?: Webhooks.RequestOptions
+    ): Promise<Vocode.Webhook> {
         const { id, body: _body } = request;
-        const _queryParams = new URLSearchParams();
-        _queryParams.append("id", id);
+        const _queryParams: Record<string, string | string[] | object | object[]> = {};
+        _queryParams["id"] = id;
         const _response = await core.fetcher({
             url: urlJoin(
                 (await core.Supplier.get(this._options.environment)) ?? environments.VocodeEnvironment.Production,
@@ -247,15 +317,21 @@ export class Webhooks {
                 Authorization: await this._getAuthorizationHeader(),
                 "X-Fern-Language": "JavaScript",
                 "X-Fern-SDK-Name": "@vocode/vocode-api",
-                "X-Fern-SDK-Version": "0.0.46",
+                "X-Fern-SDK-Version": "0.0.47",
+                "User-Agent": "@vocode/vocode-api/0.0.47",
+                "X-Fern-Runtime": core.RUNTIME.type,
+                "X-Fern-Runtime-Version": core.RUNTIME.version,
             },
             contentType: "application/json",
             queryParameters: _queryParams,
-            body: await serializers.WebhookUpdateParams.jsonOrThrow(_body, { unrecognizedObjectKeys: "strip" }),
-            timeoutMs: 60000,
+            requestType: "json",
+            body: serializers.WebhookUpdateParams.jsonOrThrow(_body, { unrecognizedObjectKeys: "strip" }),
+            timeoutMs: requestOptions?.timeoutInSeconds != null ? requestOptions.timeoutInSeconds * 1000 : 60000,
+            maxRetries: requestOptions?.maxRetries,
+            abortSignal: requestOptions?.abortSignal,
         });
         if (_response.ok) {
-            return await serializers.Webhook.parseOrThrow(_response.body, {
+            return serializers.Webhook.parseOrThrow(_response.body, {
                 unrecognizedObjectKeys: "passthrough",
                 allowUnrecognizedUnionMembers: true,
                 allowUnrecognizedEnumValues: true,
@@ -267,7 +343,7 @@ export class Webhooks {
             switch (_response.error.statusCode) {
                 case 422:
                     throw new Vocode.UnprocessableEntityError(
-                        await serializers.HttpValidationError.parseOrThrow(_response.error.body, {
+                        serializers.HttpValidationError.parseOrThrow(_response.error.body, {
                             unrecognizedObjectKeys: "passthrough",
                             allowUnrecognizedUnionMembers: true,
                             allowUnrecognizedEnumValues: true,
@@ -297,7 +373,12 @@ export class Webhooks {
         }
     }
 
-    protected async _getAuthorizationHeader() {
-        return `Bearer ${await core.Supplier.get(this._options.token)}`;
+    protected async _getAuthorizationHeader(): Promise<string | undefined> {
+        const bearer = await core.Supplier.get(this._options.token);
+        if (bearer != null) {
+            return `Bearer ${bearer}`;
+        }
+
+        return undefined;
     }
 }

@@ -5,6 +5,7 @@
 export interface AzureVoice {
     id: string;
     userId: string;
+    type: "voice_azure";
     voiceName: string;
     pitch?: number;
     rate?: number;
